@@ -1,11 +1,3 @@
-Samajh gaya 👍 — tumhe ek professional README.md chahiye jo GitHub pe dekhne wale ko clearly samajh aaye.
-
-Main tumhare project (Flask + MySQL + Excel export) ke hisaab se ready-to-use README de raha hoon 👇
-
-⸻
-
-📄 ✅ Copy–Paste README.md
-
 # 🎓 Student Management System (Flask + MySQL)
 
 A simple and powerful Student Management System built using Flask and MySQL.  
