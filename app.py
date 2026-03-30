@@ -111,8 +111,9 @@ def stats():
                     'avg': avg, 'classes': classes, 'top': top})
 
 # ─── STUDENTS ────────────────────────────────────────
-@app.route('/api/students', methods=['GET'])
-def get_students():
+@app.route('/api/students', methods=['POST'])
+def add_student():
+    return jsonify({"success": True})
     conn = get_db(); cur = conn.cursor(dictionary=True)
     s = request.args.get('search',''); c = request.args.get('class','')
     q = "SELECT * FROM students WHERE 1=1"; p = []
