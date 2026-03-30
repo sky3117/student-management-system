@@ -1,2 +1,4 @@
 flask>=2.3.0
 mysql-connector-python>=8.0.0
+pandas
+openpyxl
