@@ -207,50 +207,97 @@ def delete_mark(mid):
     conn.commit(); cur.close(); conn.close(); return jsonify({'success': True})
 
 # ─── ATTENDANCE ──────────────────────────────────────
+from flask import session
+
 @app.route('/api/attendance', methods=['GET'])
 def get_attendance():
-    conn = get_db(); cur = conn.cursor(dictionary=True)
+    conn = get_db()
+    cur = conn.cursor(dictionary=True)
+
     att_date = request.args.get('date', date.today().isoformat())
-    sid = request.args.get('student_id','')
+    sid = request.args.get('student_id', '')
+
     if sid:
-        cur.execute("SELECT a.*,s.name,s.roll_no FROM attendance a JOIN students s ON a.student_id=s.id WHERE a.student_id=%s ORDER BY a.att_date DESC", (sid,))
-   else:
-    cur.execute("""
-    SELECT s.id, s.name, s.roll_no, s.class, s.section,
-           COALESCE(a.status, 'Not Marked') as status
-    FROM students s
-    LEFT JOIN attendance a 
-    ON s.id = a.student_id AND a.att_date = %s
-    WHERE s.user_id = %s
-    ORDER BY s.class, s.roll_no
-    """, (att_date, session['user_id']))
+        cur.execute("""
+            SELECT a.*, s.name, s.roll_no 
+            FROM attendance a 
+            JOIN students s ON a.student_id = s.id 
+            WHERE a.student_id = %s 
+            ORDER BY a.att_date DESC
+        """, (sid,))
+    else:
+        cur.execute("""
+            SELECT s.id, s.name, s.roll_no, s.class, s.section,
+                   COALESCE(a.status, 'Not Marked') as status
+            FROM students s
+            LEFT JOIN attendance a 
+            ON s.id = a.student_id AND a.att_date = %s
+            WHERE s.user_id = %s
+            ORDER BY s.class, s.roll_no
+        """, (att_date, session['user_id']))
+
     rows = cur.fetchall()
+
     for r in rows:
-        if r.get('att_date'): r['att_date'] = str(r['att_date'])
-    cur.close(); conn.close(); return jsonify(rows)
+        if r.get('att_date'):
+            r['att_date'] = str(r['att_date'])
+
+    cur.close()
+    conn.close()
+
+    return jsonify(rows)
+
 
 @app.route('/api/attendance', methods=['POST'])
 def mark_attendance():
-    d = request.json; conn = get_db(); cur = conn.cursor()
+    d = request.json
+    conn = get_db()
+    cur = conn.cursor()
+
     try:
         for rec in d['records']:
-            cur.execute("INSERT INTO attendance (student_id,att_date,status) VALUES (%s,%s,%s) ON DUPLICATE KEY UPDATE status=%s",
-                (rec['student_id'],d['date'],rec['status'],rec['status']))
-        conn.commit(); return jsonify({'success': True})
-    except Error as e: return jsonify({'error': str(e)}), 400
-    finally: cur.close(); conn.close()
+            cur.execute("""
+                INSERT INTO attendance (student_id, att_date, status) 
+                VALUES (%s, %s, %s) 
+                ON DUPLICATE KEY UPDATE status=%s
+            """, (rec['student_id'], d['date'], rec['status'], rec['status']))
+
+        conn.commit()
+        return jsonify({'success': True})
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 400
+
+    finally:
+        cur.close()
+        conn.close()
+
 
 @app.route('/api/attendance/summary')
 def att_summary():
-    conn = get_db(); cur = conn.cursor(dictionary=True)
-    cur.execute("""SELECT s.id,s.name,s.roll_no,s.class,
-        COUNT(a.id) as total, SUM(a.status='Present') as present,
-        SUM(a.status='Absent') as absent, SUM(a.status='Late') as late,
-        ROUND(SUM(a.status='Present')/NULLIF(COUNT(a.id),0)*100,1) as pct
-        FROM students s LEFT JOIN attendance a ON s.id=a.student_id
-        GROUP BY s.id ORDER BY pct DESC""")
-    rows = cur.fetchall(); cur.close(); conn.close(); return jsonify(rows)
+    conn = get_db()
+    cur = conn.cursor(dictionary=True)
 
+    cur.execute("""
+        SELECT s.id, s.name, s.roll_no, s.class,
+               COUNT(a.id) as total,
+               SUM(a.status='Present') as present,
+               SUM(a.status='Absent') as absent,
+               SUM(a.status='Late') as late,
+               ROUND(SUM(a.status='Present') / NULLIF(COUNT(a.id),0) * 100,1) as pct
+        FROM students s 
+        LEFT JOIN attendance a ON s.id = a.student_id
+        WHERE s.user_id = %s
+        GROUP BY s.id 
+        ORDER BY pct DESC
+    """, (session['user_id'],))
+
+    rows = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return jsonify(rows)
 # ─── FEES ────────────────────────────────────────────
 @app.route('/api/fees', methods=['GET'])
 def get_fees():
