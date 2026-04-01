@@ -214,11 +214,16 @@ def get_attendance():
     sid = request.args.get('student_id','')
     if sid:
         cur.execute("SELECT a.*,s.name,s.roll_no FROM attendance a JOIN students s ON a.student_id=s.id WHERE a.student_id=%s ORDER BY a.att_date DESC", (sid,))
-    else:
-        cur.execute("""SELECT s.id,s.name,s.roll_no,s.class,s.section,
-            COALESCE(a.status,'Not Marked') as status FROM students s
-            LEFT JOIN attendance a ON s.id=a.student_id AND a.att_date=%s
-            ORDER BY s.class,s.roll_no""", (att_date,))
+   else:
+    cur.execute("""
+    SELECT s.id, s.name, s.roll_no, s.class, s.section,
+           COALESCE(a.status, 'Not Marked') as status
+    FROM students s
+    LEFT JOIN attendance a 
+    ON s.id = a.student_id AND a.att_date = %s
+    WHERE s.user_id = %s
+    ORDER BY s.class, s.roll_no
+    """, (att_date, session['user_id']))
     rows = cur.fetchall()
     for r in rows:
         if r.get('att_date'): r['att_date'] = str(r['att_date'])
